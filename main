@@ -15,8 +15,139 @@ def fitness_f2(individuals):
         prod *= np.cos(individuals[i]/np.sqrt(i+1))
     return sum - prod + 1
 
+def objective_function(individuals, objective_no=1):
+    #return [fitness_f1(individuals) , fitness_f2(individuals)]
+    return fitness_f1(individuals) if objective_no == 1 else fitness_f2(individuals)
+
+def generate_seed(runs, increment=50):
+    base_seed = random.randint(5, 10000)  # Generate a random base seed
+    seed_values = [base_seed + i * increment for i in range(runs)]
+    return seed_values
+
+def DE_process(parameters):
+    # extract parameters
+    generations, bound, dim, population_size, seed_value, objective_no = parameters
+    random.seed(seed_value)
+
+    # Create the initial particle and variance of the population
+    population = np.random.uniform(low=bound[0], high=bound[1], size=(population_size, dim))
+
+    best_solution = None
+    best_fitness = None
+    mutation_factor = 0.5
+    crossover_rate = 0.7
+
+    print('DE Process')
+    for generation in range(generations):
+        print(f'\rEP: Generation: {generation} of {generations} ...', end='.', flush=True)
+        
+        for i in range(population_size):
+            # Evaluate the fitness of each dimention in the population
+            #fitness = [objective_function(solution, objective_no) for solution in population]
+
+            # MTATION: Mutation
+            indices = list(range(population_size))
+            indices.remove(i)
+            a, b, c = np.random.choice(indices, 3, replace=False)
+            mutant = population[a] + mutation_factor * (population[b] - population[c])
+
+            # CROSSOVER: Crossover
+            trial = np.copy(population[i])
+            for j in range(len(population[i])):
+                if np.random.rand() < crossover_rate:
+                    trial[j] = mutant[j]
+
+            # SELECTION:  
+            if objective_function(trial, objective_no) < objective_function(population[i], objective_no):
+                population[i] = trial
+        
+        # Update the best solution
+        for solution in population:
+            fitness = objective_function(solution, objective_no)
+            if best_solution is None or fitness < best_fitness:
+                best_solution = solution
+                best_fitness = fitness
+    
+    return best_solution, best_fitness
+
+def PSO_process():
+    print()
+
+def create_table(fitness_obj1, fitness_obj2):
+    
+    # Mean and standard deviation
+    mean_obj1 = np.mean(fitness_obj1)
+    std_obj1 = np.std(fitness_obj1)
+    mean_obj2 = np.mean(fitness_obj2)
+    std_obj2 = np.std(fitness_obj2)
+
+    # Create a dictionary with the two lists as values
+    #data = {'Fun': '', 'Fitness Obj 1': '', 'Fitness Obj 2': ''}
+    data = {'': ['Mean'], 'Fitness Obj 1': [mean_obj1], 'Fitness Obj 2': [mean_obj2]}
+
+    # Create a pandas DataFrame from the dictionary
+    data_table = pd.DataFrame(data)
+
+    # Create a new DataFrame with the stander deviation and concatenate it with (data_table)
+    std_row = pd.DataFrame({'': ['STD'], 'Fitness Obj 1': [std_obj1], 'Fitness Obj 2': [std_obj2]})
+    data_table = pd.concat([data_table, std_row], ignore_index=True)
+    return data_table
 
 def main():
+    # General Parameters    
+    generations = 100 
+    objective = 2   # Number of Objective function to optimize
+
+    # Solution Boundary 
+    bound = [-30, 30]   # Lower bound and Upper bound of the search space
+    runs = 5   
+    dim = [20, 50]   # Dimension of the problem
+    seed_value = generate_seed(runs, increment=10)
+    population_size = 50
+
+    f1_d20_best_fitness = np.zeros((runs, 2))
+    f1_d50_best_fitness = np.zeros((runs, 2))
+    f2_d20_best_fitness = np.zeros((runs, 2))
+    f2_d50_best_fitness = np.zeros((runs, 2))
+
+    for obj in range(objective):
+
+        for run in range(runs):
+            # Loop through the dimension, 20 and 50
+            for dim_ in dim:
+                print(f"Objective: {obj+1}, Run: {run+1} Dimension: {dim_}\n")
+
+                # DE Process
+                DE_parameters = [generations, bound, dim_, population_size, seed_value[run], obj+1]
+                DE_best_individual, DE_best_fitness = DE_process(DE_parameters)
+
+                # PSO Process
+                PSO_parameters = [generations, dim_, bound, seed_value[run], obj+1]
+                #PSO_process(PSO_parameters)
+                PSO_best_individual = []
+                PSO_best_fitness = []
+
+                if obj == 0:
+                    if(dim_ == 20):
+                        f1_d20_best_fitness[run] = [1.1, DE_best_fitness]
+                    else:
+                        f1_d50_best_fitness[run] = [1.1, DE_best_fitness]
+                else:
+                    if(dim_ == 20):
+                        f2_d20_best_fitness[run] = [1.1, DE_best_fitness]
+                    else:
+                        f2_d50_best_fitness[run] = [1.1, DE_best_fitness]
+
+    # Create a table
+    DE_d20_table = create_table([item[1] for item in f1_d20_best_fitness], [item[1] for item in f2_d20_best_fitness])
+    DE_d50_table = create_table([item[1] for item in f1_d50_best_fitness], [item[1] for item in f2_d50_best_fitness])
+
+    print('------------------------------------------')
+    print("DE 20")
+    print(DE_d20_table)
+    print('------------------------------------------')
+    print("DE 50")
+    print(DE_d50_table)
 
 
 if __name__ == "__main__":
