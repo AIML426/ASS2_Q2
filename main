@@ -1,0 +1,23 @@
+import random
+import numpy as np
+import pandas as pd
+
+# Implement Rposenbrock function
+def fitness_f1(individuals):
+    return sum(100.0*(individuals[1:]-individuals[:-1]**2.0)**2.0 + (1-individuals[:-1])**2.0)
+
+# Implement Griewanks function
+def fitness_f2(individuals):
+    sum = 0
+    prod = 1
+    for i in range(len(individuals)):
+        sum += individuals[i]**2/4000
+        prod *= np.cos(individuals[i]/np.sqrt(i+1))
+    return sum - prod + 1
+
+
+def main():
+
+
+if __name__ == "__main__":
+    main()
