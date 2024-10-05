@@ -29,7 +29,7 @@ def DE_process(parameters):
     generations, bound, dim, population_size, seed_value, objective_no = parameters
     random.seed(seed_value)
 
-    # Create the initial particle and variance of the population
+    # Create the initial particle of the population
     population = np.random.uniform(low=bound[0], high=bound[1], size=(population_size, dim))
 
     best_solution = None
@@ -39,7 +39,7 @@ def DE_process(parameters):
 
     print('DE Process')
     for generation in range(generations):
-        print(f'\rEP: Generation: {generation} of {generations} ...', end='.', flush=True)
+        print(f'\rDE: Generation: {generation} of {generations} ...', end='.', flush=True)
         
         for i in range(population_size):
             # Evaluate the fitness of each dimention in the population
@@ -70,9 +70,60 @@ def DE_process(parameters):
     
     return best_solution, best_fitness
 
-def PSO_process():
-    print()
+def PSO_process(parameters):
+    # Extract parameters
+    generations, dim, bound, seed_value, objective_no, population_size = parameters
+    # Initialize PSO parameters
+    w = 0.7298  # Inertia weight
+    c1 = 1.49618  # Cognitive weight
+    c2 = 1.49618  # Social weight
 
+    # PARTICLES INITIALIZATION: position, velocity, g_best and p_best
+    np.random.seed(seed_value)
+    particles_position = np.random.uniform(low=bound[0], high=bound[1], size=(population_size,dim))
+    particles_velocity = np.random.uniform(-1, 1, (population_size, dim))
+
+    # Initialize the personal best position and fitness
+    p_best_position = np.copy(particles_position)
+    p_best_fitness = [objective_function(particle, objective_no) for particle in p_best_position]
+
+    # Initialize the global best position and fitness
+    g_best = np.zeros(dim)
+    g_best_fitness = np.inf
+    
+
+    print('PSO Process')
+    for generation in range(generations):
+        print(f'\rPSO: Generation: {generation} of {generations} ...', end='.', flush=True)
+
+        # VELOCITY & POSITION UPDATE: Update velocities and positions
+        for i in range(population_size):
+            r1, r2 = np.random.rand(2)
+            particles_velocity[i] = w * particles_velocity[i] + c1 * r1 * (p_best_position[i] - particles_position[i]) + c2 * r2 * (g_best - particles_position[i])
+            particles_position[i] = particles_position[i] + particles_velocity[i]
+            # Optional: Apply boundary conditions
+            particles_position[i] = np.clip(particles_position[i], bound[0], bound[1])
+
+        # EVALUATION: Evaluate fitness
+        fitness = [objective_function(particle, objective_no) for particle in particles_position]
+
+        # PERSONAL BEST: Update personal best
+        for i in range(population_size):
+            if fitness[i] < p_best_fitness[i]:
+                p_best_fitness[i] = fitness[i]
+                p_best_position[i] = particles_position[i]
+
+        # GLOBAL BEST: Update global best
+        if np.min(p_best_fitness) < g_best_fitness:
+            g_best_fitness = np.min(p_best_fitness)
+            g_best = p_best_position[np.argmin(p_best_fitness)]
+
+        # Print the best fitness
+        print(f'Generation: {generation}, Best Fitness: {g_best_fitness}, Best Solution: {g_best}')
+
+    return g_best, g_best_fitness
+
+            
 def create_table(fitness_obj1, fitness_obj2):
     
     # Mean and standard deviation
@@ -100,7 +151,7 @@ def main():
 
     # Solution Boundary 
     bound = [-30, 30]   # Lower bound and Upper bound of the search space
-    runs = 5   
+    runs = 30   
     dim = [20, 50]   # Dimension of the problem
     seed_value = generate_seed(runs, increment=10)
     population_size = 50
@@ -117,31 +168,38 @@ def main():
             for dim_ in dim:
                 print(f"Objective: {obj+1}, Run: {run+1} Dimension: {dim_}\n")
 
+                # PSO Process
+                PSO_parameters = [generations, dim_, bound, seed_value[run], obj+1, population_size]
+                #PSO_process(PSO_parameters)
+                PSO_best_individual, PSO_best_fitness = PSO_process(PSO_parameters)
+
                 # DE Process
                 DE_parameters = [generations, bound, dim_, population_size, seed_value[run], obj+1]
                 DE_best_individual, DE_best_fitness = DE_process(DE_parameters)
 
-                # PSO Process
-                PSO_parameters = [generations, dim_, bound, seed_value[run], obj+1]
-                #PSO_process(PSO_parameters)
-                PSO_best_individual = []
-                PSO_best_fitness = []
-
                 if obj == 0:
                     if(dim_ == 20):
-                        f1_d20_best_fitness[run] = [1.1, DE_best_fitness]
+                        f1_d20_best_fitness[run] = [PSO_best_fitness, DE_best_fitness]
                     else:
-                        f1_d50_best_fitness[run] = [1.1, DE_best_fitness]
+                        f1_d50_best_fitness[run] = [PSO_best_fitness, DE_best_fitness]
                 else:
                     if(dim_ == 20):
-                        f2_d20_best_fitness[run] = [1.1, DE_best_fitness]
+                        f2_d20_best_fitness[run] = [PSO_best_fitness, DE_best_fitness]
                     else:
-                        f2_d50_best_fitness[run] = [1.1, DE_best_fitness]
+                        f2_d50_best_fitness[run] = [PSO_best_fitness, DE_best_fitness]
 
     # Create a table
     DE_d20_table = create_table([item[1] for item in f1_d20_best_fitness], [item[1] for item in f2_d20_best_fitness])
     DE_d50_table = create_table([item[1] for item in f1_d50_best_fitness], [item[1] for item in f2_d50_best_fitness])
+    PSO_d20_table = create_table([item[0] for item in f1_d20_best_fitness], [item[0] for item in f2_d20_best_fitness])
+    PSO_d50_table = create_table([item[0] for item in f1_d50_best_fitness], [item[0] for item in f2_d50_best_fitness])
 
+    print('------------------------------------------')
+    print("PSO 20")
+    print(PSO_d20_table)
+    print('------------------------------------------')
+    print("PSO 50")
+    print(PSO_d50_table)
     print('------------------------------------------')
     print("DE 20")
     print(DE_d20_table)
